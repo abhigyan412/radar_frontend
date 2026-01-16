@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Radar Live</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <style>
+    body { margin:0; font-family: system-ui, sans-serif; }
+    #map { height: 100vh; width: 100%; }
+
+    .panel {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: white;
+      padding: 12px 15px;
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.15);
+      z-index: 1000;
+    }
+
+    .connected { color: green; font-weight:bold }
+
+    #chat {
+      position:absolute;
+      bottom:20px;
+      right:20px;
+      width:300px;
+      background:white;
+      border-radius:10px;
+      box-shadow:0 10px 30px rgba(0,0,0,.3);
+      display:none;
+      overflow:hidden;
+      z-index:1000;
+    }
+
+    #chatHeader {
+      background:#2563eb;
+      color:white;
+      padding:10px;
+      font-weight:bold;
+    }
+
+    #messages {
+      height:250px;
+      overflow-y:auto;
+      padding:10px;
+    }
+
+    #chat input {
+      flex:1;
+      padding:10px;
+      border:none;
+    }
+
+    #chat button {
+      background:#2563eb;
+      color:white;
+      border:none;
+      padding:10px;
+      cursor:pointer;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="panel">
+  <b id="me"></b><br>
+  <span id="status">🟡 Searching nearby players...</span>
+</div>
+
+<div id="map"></div>
+
+<div id="chat">
+  <div id="chatHeader">Chat</div>
+  <div id="messages"></div>
+  <div style="display:flex;border-top:1px solid #ddd">
+    <input id="msg" placeholder="Type...">
+    <button onclick="sendMsg()">Send</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+<script>
+
+/* 🔥 PRODUCTION BACKEND URL (Railway) */
+const API = "https://radarbackend-production-d61c.up.railway.app";
+
+/* USER SETUP */
+let user_id = prompt("Your name?");
+let interest = prompt("What do you want to play?");
+document.getElementById("me").innerText = `${user_id} — ${interest}`;
+
+let myLat = null;
+let myLng = null;
+let connectedWith = null;
+
+/* MAP */
+let map = L.map("map").setView([0,0], 2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
+let myMarker = null;
+let markers = {};
+
+/* 🔥 PRODUCTION WEBSOCKET */
+let ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
+
+ws.onmessage = e => {
+  let data = JSON.parse(e.data);
+
+  if (data.type === "connected") {
+    if (data.a === user_id || data.b === user_id) {
+      connectedWith = data.a === user_id ? data.b : data.a;
+      document.getElementById("status").innerHTML =
+        "🟢 Connected with <b>" + connectedWith + "</b>";
+      document.getElementById("chat").style.display = "block";
+      document.getElementById("chatHeader").innerText = "Chat with " + connectedWith;
+      loadChat();
+    }
+    return;
+  }
+
+  if (data.type === "message") {
+    addMessage(data.data.from, data.data.text);
+    return;
+  }
+
+  if (data.type === "update") {
+    let id = data.user;
+    if (!myLat) return;
+
+    if (markers[id]) map.removeLayer(markers[id]);
+
+    let dist = distance(myLat, myLng, data.lat, data.lng);
+
+    let popup = `
+      <b>${id}</b><br>
+      ${data.interest}<br>
+      ${Math.round(dist)} m away<br>
+      ${connectedWith === id ? "<span class='connected'>Connected</span>" : "Searching"}
+    `;
+
+    markers[id] = L.marker([data.lat, data.lng])
+      .addTo(map)
+      .bindPopup(popup);
+  }
+};
+
+/* GPS */
+navigator.geolocation.watchPosition(pos => {
+  myLat = pos.coords.latitude;
+  myLng = pos.coords.longitude;
+
+  if (!myMarker) {
+    map.setView([myLat, myLng], 16);
+    myMarker = L.marker([myLat, myLng])
+      .addTo(map)
+      .bindPopup("You")
+      .openPopup();
+  } else {
+    myMarker.setLatLng([myLat, myLng]);
+  }
+}, () => alert("Location permission is required"));
+
+/* HEARTBEAT */
+setInterval(() => {
+  if (!myLat) return;
+
+  fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`, {
+    method:"POST"
+  }).catch(()=>{});
+}, 8000);
+
+/* CHAT */
+function sendMsg(){
+  let t = msg.value;
+  if(!t || !connectedWith) return;
+
+  fetch(`${API}/send_message?from_user=${user_id}&to_user=${connectedWith}&text=${encodeURIComponent(t)}`, {
+    method:"POST"
+  });
+
+  msg.value="";
+}
+
+function addMessage(f,t){
+  let d=document.createElement("div");
+  d.innerHTML="<b>"+f+":</b> "+t;
+  messages.appendChild(d);
+  messages.scrollTop=999999;
+}
+
+function loadChat(){
+  fetch(`${API}/chat_history?user=${user_id}&other=${connectedWith}`)
+    .then(r=>r.json())
+    .then(m=>{
+      messages.innerHTML="";
+      m.forEach(x=>{
+        let j=JSON.parse(x.replace(/'/g,'"'));
+        addMessage(j.from,j.text);
+      });
+    });
+}
+
+function distance(a,b,c,d){
+  let R=6371000;
+  let dLat=(c-a)*Math.PI/180;
+  let dLon=(d-b)*Math.PI/180;
+  let q=Math.sin(dLat/2)**2 +
+        Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*
+        Math.sin(dLon/2)**2;
+  return R*(2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q)));
+}
+
+</script>
+</body>
+</html>
