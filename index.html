@@ -17,9 +17,23 @@
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(0,0,0,.15);
       z-index: 1000;
+      min-width:200px;
     }
 
     .connected { color: green; font-weight:bold }
+
+    #disconnectBtn {
+      margin-top:8px;
+      width:100%;
+      padding:8px;
+      border:none;
+      border-radius:8px;
+      background:#ef4444;
+      color:white;
+      font-weight:bold;
+      cursor:pointer;
+      display:none;
+    }
 
     #chat {
       position:absolute;
@@ -61,7 +75,7 @@
       cursor:pointer;
     }
 
-    /* 🔥 ONBOARDING MODAL */
+    /* ONBOARDING */
     #onboard {
       position:fixed;
       inset:0;
@@ -116,7 +130,7 @@
 
 <body>
 
-<!-- 🔥 ONBOARDING -->
+<!-- ONBOARDING -->
 <div id="onboard">
   <div id="onboardBox">
     <h2>Radar</h2>
@@ -133,6 +147,7 @@
 <div class="panel">
   <b id="me"></b><br>
   <span id="status">🟡 Searching nearby players...</span>
+  <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
 </div>
 
 <div id="map"></div>
@@ -158,10 +173,11 @@ let myLat = null;
 let myLng = null;
 let connectedWith = null;
 let chatInitializedFor = null;
+let isLocked = false; // 🔥 MATCH LOCK
 
 let ws = null;
 
-/* 🔥 LOAD IDENTITY */
+/* LOAD IDENTITY */
 function loadIdentity() {
   const u = localStorage.getItem("radar_user");
   const i = localStorage.getItem("radar_interest");
@@ -171,31 +187,23 @@ function loadIdentity() {
     interest = i;
     startApp();
   } else {
-    document.getElementById("onboard").style.display = "flex";
+    onboard.style.display = "flex";
   }
 }
 
-/* 🔥 START BUTTON */
+/* START BUTTON */
 startBtn.onclick = () => {
   let n = nameInput.value.trim();
   let it = interestInput.value.trim().toLowerCase();
 
-  if (!n || !it) {
-    showError("Name and interest required.");
-    return;
-  }
-
-  if (n.length > 20 || it.length > 20) {
-    showError("Max 20 characters.");
-    return;
-  }
+  if (!n || !it) return showError("Name and interest required.");
+  if (n.length > 20 || it.length > 20) return showError("Max 20 characters.");
 
   localStorage.setItem("radar_user", n);
   localStorage.setItem("radar_interest", it);
 
   user_id = n;
   interest = it;
-
   startApp();
 };
 
@@ -204,10 +212,10 @@ function showError(t){
   error.style.display = "block";
 }
 
-/* 🔥 START CORE APP */
+/* START CORE */
 function startApp() {
-  document.getElementById("onboard").style.display = "none";
-  document.getElementById("me").innerText = `${user_id} — ${interest}`;
+  onboard.style.display = "none";
+  me.innerText = `${user_id} — ${interest}`;
 
   initMap();
   initWS();
@@ -235,13 +243,17 @@ function initWS(){
     if (data.type === "connected") {
       if (data.a !== user_id && data.b !== user_id) return;
 
-      let other = data.a === user_id ? data.b : data.a;
-      if (chatInitializedFor === other) return;
+      if (isLocked) return; // 🔥 HARD LOCK
 
-      chatInitializedFor = other;
+      let other = data.a === user_id ? data.b : data.a;
+
+      isLocked = true;
       connectedWith = other;
+      chatInitializedFor = other;
 
       status.innerHTML = "🟢 Connected with <b>" + connectedWith + "</b>";
+      disconnectBtn.style.display = "block";
+
       chat.style.display = "block";
       chatHeader.innerText = "Chat with " + connectedWith;
 
@@ -256,6 +268,8 @@ function initWS(){
     }
 
     if (data.type === "update") {
+      if (isLocked) return; // 🔥 freeze map after match
+
       let id = data.user;
       if (!myLat) return;
 
@@ -267,7 +281,7 @@ function initWS(){
         <b>${id}</b><br>
         ${data.interest}<br>
         ${Math.round(dist)} m away<br>
-        ${connectedWith === id ? "<span class='connected'>Connected</span>" : "Searching"}
+        Searching
       `;
 
       markers[id] = L.marker([data.lat, data.lng]).addTo(map).bindPopup(popup);
@@ -294,10 +308,30 @@ function initGPS(){
 function initHeartbeat(){
   setInterval(() => {
     if (!myLat) return;
+
+    if (isLocked) return; // 🔥 STOP MATCHING
+
     fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`, {
       method:"POST"
     }).catch(()=>{});
   }, 8000);
+}
+
+/* DISCONNECT */
+function disconnect(){
+  connectedWith = null;
+  chatInitializedFor = null;
+  isLocked = false;
+
+  status.innerHTML = "🟡 Searching nearby players...";
+  disconnectBtn.style.display = "none";
+
+  chat.style.display = "none";
+  messages.innerHTML = "";
+
+  // Clear markers
+  Object.values(markers).forEach(m => map.removeLayer(m));
+  markers = {};
 }
 
 /* CHAT */
@@ -347,6 +381,7 @@ loadIdentity();
 </script>
 </body>
 </html>
+
 
 
 
