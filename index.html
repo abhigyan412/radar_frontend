@@ -17,23 +17,9 @@
       border-radius: 10px;
       box-shadow: 0 10px 30px rgba(0,0,0,.15);
       z-index: 1000;
-      min-width:200px;
     }
 
     .connected { color: green; font-weight:bold }
-
-    #disconnectBtn {
-      margin-top:8px;
-      width:100%;
-      padding:8px;
-      border:none;
-      border-radius:8px;
-      background:#ef4444;
-      color:white;
-      font-weight:bold;
-      cursor:pointer;
-      display:none;
-    }
 
     #chat {
       position:absolute;
@@ -53,6 +39,9 @@
       color:white;
       padding:10px;
       font-weight:bold;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
     }
 
     #messages {
@@ -75,85 +64,32 @@
       cursor:pointer;
     }
 
-    /* ONBOARDING */
-    #onboard {
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.6);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:2000;
-    }
-
-    #onboardBox {
-      background:white;
-      width:320px;
-      border-radius:12px;
-      padding:20px;
-      box-shadow:0 20px 50px rgba(0,0,0,.4);
-      text-align:center;
-    }
-
-    #onboardBox h2 { margin:0 0 10px }
-    #onboardBox p { color:#555; font-size:14px }
-
-    #onboardBox input {
-      width:100%;
-      padding:10px;
-      margin:8px 0;
-      border:1px solid #ddd;
-      border-radius:8px;
-      font-size:14px;
-    }
-
-    #startBtn {
-      width:100%;
-      margin-top:10px;
-      padding:12px;
-      border:none;
-      border-radius:8px;
-      background:#2563eb;
+    #disconnectBtn {
+      background:#ef4444;
       color:white;
-      font-weight:bold;
+      border:none;
+      padding:4px 8px;
+      border-radius:6px;
       cursor:pointer;
-    }
-
-    #error {
-      color:red;
-      font-size:13px;
-      margin-top:8px;
-      display:none;
+      font-size:12px;
     }
   </style>
 </head>
 
 <body>
 
-<!-- ONBOARDING -->
-<div id="onboard">
-  <div id="onboardBox">
-    <h2>Radar</h2>
-    <p>Find people nearby who share your interest — right now.</p>
-
-    <input id="nameInput" placeholder="Your name">
-    <input id="interestInput" placeholder="Interest (e.g. chess, cricket)">
-
-    <button id="startBtn">Start</button>
-    <div id="error"></div>
-  </div>
-</div>
-
 <div class="panel">
   <b id="me"></b><br>
   <span id="status">🟡 Searching nearby players...</span>
-  <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
 </div>
 
 <div id="map"></div>
 
 <div id="chat">
-  <div id="chatHeader">Chat</div>
+  <div id="chatHeader">
+    <span id="chatTitle">Chat</span>
+    <button id="disconnectBtn" onclick="disconnect()">Disconnect</button>
+  </div>
   <div id="messages"></div>
   <div style="display:flex;border-top:1px solid #ddd">
     <input id="msg" placeholder="Type...">
@@ -166,173 +102,129 @@
 
 const API = "https://radarbackend-production-d61c.up.railway.app";
 
-let user_id = null;
-let interest = null;
+/* USER SETUP */
+let user_id = prompt("Your name?");
+let interest = prompt("What do you want to play?");
+document.getElementById("me").innerText = `${user_id} — ${interest}`;
 
 let myLat = null;
 let myLng = null;
 let connectedWith = null;
 let chatInitializedFor = null;
-let isLocked = false; // 🔥 MATCH LOCK
-
-let ws = null;
-
-/* LOAD IDENTITY */
-function loadIdentity() {
-  const u = localStorage.getItem("radar_user");
-  const i = localStorage.getItem("radar_interest");
-
-  if (u && i) {
-    user_id = u;
-    interest = i;
-    startApp();
-  } else {
-    onboard.style.display = "flex";
-  }
-}
-
-/* START BUTTON */
-startBtn.onclick = () => {
-  let n = nameInput.value.trim();
-  let it = interestInput.value.trim().toLowerCase();
-
-  if (!n || !it) return showError("Name and interest required.");
-  if (n.length > 20 || it.length > 20) return showError("Max 20 characters.");
-
-  localStorage.setItem("radar_user", n);
-  localStorage.setItem("radar_interest", it);
-
-  user_id = n;
-  interest = it;
-  startApp();
-};
-
-function showError(t){
-  error.innerText = t;
-  error.style.display = "block";
-}
-
-/* START CORE */
-function startApp() {
-  onboard.style.display = "none";
-  me.innerText = `${user_id} — ${interest}`;
-
-  initMap();
-  initWS();
-  initGPS();
-  initHeartbeat();
-}
+let inCooldown = false;
+let lastDisconnectedFrom = null;
 
 /* MAP */
-let map = null;
+let map = L.map("map").setView([0,0], 2);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
+
 let myMarker = null;
 let markers = {};
 
-function initMap(){
-  map = L.map("map").setView([0,0], 2);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
-}
+/* WEBSOCKET */
+let ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
 
-/* WS */
-function initWS(){
-  ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
+ws.onmessage = e => {
+  let data = JSON.parse(e.data);
 
-  ws.onmessage = e => {
-    let data = JSON.parse(e.data);
+  /* 🔴 DISCONNECTED EVENT */
+  if (data.type === "disconnected") {
+    if (data.with !== connectedWith) return;
 
-    if (data.type === "connected") {
-      if (data.a !== user_id && data.b !== user_id) return;
+    console.log("Disconnected from", data.with);
 
-      if (isLocked) return; // 🔥 HARD LOCK
+    lastDisconnectedFrom = data.with;
+    resetChatUI();
+    inCooldown = true;
 
-      let other = data.a === user_id ? data.b : data.a;
+    document.getElementById("status").innerHTML =
+      "⏳ Disconnected. Searching for new players...";
 
-      isLocked = true;
-      connectedWith = other;
-      chatInitializedFor = other;
+    setTimeout(() => {
+      inCooldown = false;
+      lastDisconnectedFrom = null;
+    }, 15000);
 
-      status.innerHTML = "🟢 Connected with <b>" + connectedWith + "</b>";
-      disconnectBtn.style.display = "block";
+    return;
+  }
 
-      chat.style.display = "block";
-      chatHeader.innerText = "Chat with " + connectedWith;
+  /* 🟢 CONNECTED EVENT */
+  if (data.type === "connected") {
+    if (data.a !== user_id && data.b !== user_id) return;
 
-      messages.innerHTML = "";
-      loadChat();
-      return;
-    }
+    let other = data.a === user_id ? data.b : data.a;
 
-    if (data.type === "message") {
-      addMessage(data.data.from, data.data.text);
-      return;
-    }
+    // 🛑 hard ignore reconnects
+    if (inCooldown) return;
+    if (other === lastDisconnectedFrom) return;
+    if (chatInitializedFor === other) return;
 
-    if (data.type === "update") {
-      if (isLocked) return; // 🔥 freeze map after match
+    chatInitializedFor = other;
+    connectedWith = other;
 
-      let id = data.user;
-      if (!myLat) return;
+    document.getElementById("status").innerHTML =
+      "🟢 Connected with <b>" + connectedWith + "</b>";
 
-      if (markers[id]) map.removeLayer(markers[id]);
+    document.getElementById("chat").style.display = "block";
+    document.getElementById("chatTitle").innerText =
+      "Chat with " + connectedWith;
 
-      let dist = distance(myLat, myLng, data.lat, data.lng);
+    messages.innerHTML = "";
+    loadChat();
+    return;
+  }
 
-      let popup = `
-        <b>${id}</b><br>
-        ${data.interest}<br>
-        ${Math.round(dist)} m away<br>
-        Searching
-      `;
+  if (data.type === "message") {
+    addMessage(data.data.from, data.data.text);
+    return;
+  }
 
-      markers[id] = L.marker([data.lat, data.lng]).addTo(map).bindPopup(popup);
-    }
-  };
-}
-
-/* GPS */
-function initGPS(){
-  navigator.geolocation.watchPosition(pos => {
-    myLat = pos.coords.latitude;
-    myLng = pos.coords.longitude;
-
-    if (!myMarker) {
-      map.setView([myLat, myLng], 16);
-      myMarker = L.marker([myLat, myLng]).addTo(map).bindPopup("You").openPopup();
-    } else {
-      myMarker.setLatLng([myLat, myLng]);
-    }
-  }, () => alert("Location permission is required"));
-}
-
-/* HEARTBEAT */
-function initHeartbeat(){
-  setInterval(() => {
+  if (data.type === "update") {
+    let id = data.user;
     if (!myLat) return;
 
-    if (isLocked) return; // 🔥 STOP MATCHING
+    if (markers[id]) map.removeLayer(markers[id]);
 
-    fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`, {
-      method:"POST"
-    }).catch(()=>{});
-  }, 8000);
-}
+    let dist = distance(myLat, myLng, data.lat, data.lng);
 
-/* DISCONNECT */
-function disconnect(){
-  connectedWith = null;
-  chatInitializedFor = null;
-  isLocked = false;
+    let popup = `
+      <b>${id}</b><br>
+      ${data.interest}<br>
+      ${Math.round(dist)} m away<br>
+      ${connectedWith === id ? "<span class='connected'>Connected</span>" : "Searching"}
+    `;
 
-  status.innerHTML = "🟡 Searching nearby players...";
-  disconnectBtn.style.display = "none";
+    markers[id] = L.marker([data.lat, data.lng])
+      .addTo(map)
+      .bindPopup(popup);
+  }
+};
 
-  chat.style.display = "none";
-  messages.innerHTML = "";
+/* GPS */
+navigator.geolocation.watchPosition(pos => {
+  myLat = pos.coords.latitude;
+  myLng = pos.coords.longitude;
 
-  // Clear markers
-  Object.values(markers).forEach(m => map.removeLayer(m));
-  markers = {};
-}
+  if (!myMarker) {
+    map.setView([myLat, myLng], 16);
+    myMarker = L.marker([myLat, myLng])
+      .addTo(map)
+      .bindPopup("You")
+      .openPopup();
+  } else {
+    myMarker.setLatLng([myLat, myLng]);
+  }
+}, () => alert("Location permission is required"));
+
+/* HEARTBEAT */
+setInterval(() => {
+  if (!myLat) return;
+  if (inCooldown) return; // 🔥 stop heartbeat during cooldown
+
+  fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`, {
+    method:"POST"
+  }).catch(()=>{});
+}, 8000);
 
 /* CHAT */
 function sendMsg(){
@@ -354,6 +246,8 @@ function addMessage(f,t){
 }
 
 function loadChat(){
+  if (!connectedWith) return;
+
   fetch(`${API}/chat_history?user=${user_id}&other=${connectedWith}`)
     .then(r=>r.json())
     .then(m=>{
@@ -365,6 +259,36 @@ function loadChat(){
     });
 }
 
+/* DISCONNECT */
+function disconnect(){
+  if (!connectedWith) return;
+
+  lastDisconnectedFrom = connectedWith;
+
+  fetch(`${API}/disconnect?user_id=${user_id}`, {
+    method:"POST"
+  });
+
+  resetChatUI();
+  inCooldown = true;
+
+  document.getElementById("status").innerHTML =
+    "⏳ Disconnected. Searching for new players...";
+
+  setTimeout(() => {
+    inCooldown = false;
+    lastDisconnectedFrom = null;
+  }, 15000);
+}
+
+function resetChatUI(){
+  connectedWith = null;
+  chatInitializedFor = null;
+  document.getElementById("chat").style.display = "none";
+  messages.innerHTML = "";
+}
+
+/* DISTANCE */
 function distance(a,b,c,d){
   let R=6371000;
   let dLat=(c-a)*Math.PI/180;
@@ -375,12 +299,10 @@ function distance(a,b,c,d){
   return R*(2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q)));
 }
 
-/* INIT */
-loadIdentity();
-
 </script>
 </body>
 </html>
+
 
 
 
