@@ -5,7 +5,51 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
-    body { margin:0; font-family: system-ui, sans-serif; }
+    body { margin:0; font-family: system-ui, sans-serif; background:#f8fafc; }
+
+    #join {
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:#f8fafc;
+      z-index:2000;
+    }
+
+    #joinBox {
+      background:white;
+      padding:30px;
+      border-radius:12px;
+      width:320px;
+      box-shadow:0 10px 30px rgba(0,0,0,.15);
+    }
+
+    #joinBox h2 {
+      margin:0 0 15px 0;
+    }
+
+    #joinBox input,
+    #joinBox select {
+      width:100%;
+      padding:10px;
+      margin-bottom:12px;
+      border-radius:8px;
+      border:1px solid #ddd;
+      font-size:14px;
+    }
+
+    #joinBox button {
+      width:100%;
+      padding:10px;
+      background:#2563eb;
+      color:white;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-size:15px;
+    }
+
     #map { height: 100vh; width: 100%; }
 
     .panel {
@@ -78,6 +122,24 @@
 
 <body>
 
+<!-- JOIN SCREEN -->
+<div id="join">
+  <div id="joinBox">
+    <h2>Join Radar</h2>
+    <input id="nameInput" placeholder="Your name">
+    <select id="interestInput">
+      <option value="">Select interest</option>
+      <option value="chess">Chess</option>
+      <option value="cricket">Cricket</option>
+      <option value="music">Music</option>
+      <option value="startup">Startup</option>
+      <option value="fitness">Fitness</option>
+      <option value="coding">Coding</option>
+    </select>
+    <button onclick="start()">Start</button>
+  </div>
+</div>
+
 <div class="panel">
   <b id="me"></b><br>
   <span id="status">🟡 Searching nearby players...</span>
@@ -102,10 +164,8 @@
 
 const API = "https://radarbackend-production-d61c.up.railway.app";
 
-/* USER SETUP */
-let user_id = prompt("Your name?");
-let interest = prompt("What do you want to play?");
-document.getElementById("me").innerText = `${user_id} — ${interest}`;
+let user_id = null;
+let interest = null;
 
 let myLat = null;
 let myLng = null;
@@ -113,6 +173,26 @@ let connectedWith = null;
 let chatInitializedFor = null;
 let inCooldown = false;
 let lastDisconnectedFrom = null;
+let ws = null;
+
+/* START */
+function start(){
+  const name = nameInput.value.trim();
+  const int = interestInput.value;
+
+  if (!name || !int) {
+    alert("Enter name and select interest");
+    return;
+  }
+
+  user_id = name;
+  interest = int;
+
+  document.getElementById("join").style.display = "none";
+  document.getElementById("me").innerText = `${user_id} — ${interest}`;
+
+  initWS();
+}
 
 /* MAP */
 let map = L.map("map").setView([0,0], 2);
@@ -122,83 +202,80 @@ let myMarker = null;
 let markers = {};
 
 /* WEBSOCKET */
-let ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
+function initWS(){
+  ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
 
-ws.onmessage = e => {
-  let data = JSON.parse(e.data);
+  ws.onmessage = e => {
+    let data = JSON.parse(e.data);
 
-  /* 🔴 DISCONNECTED EVENT */
-  if (data.type === "disconnected") {
-    if (data.with !== connectedWith) return;
+    if (data.type === "disconnected") {
+      if (data.with !== connectedWith) return;
 
-    console.log("Disconnected from", data.with);
+      lastDisconnectedFrom = data.with;
+      resetChatUI();
+      inCooldown = true;
 
-    lastDisconnectedFrom = data.with;
-    resetChatUI();
-    inCooldown = true;
+      document.getElementById("status").innerHTML =
+        "⏳ Disconnected. Searching for new players...";
 
-    document.getElementById("status").innerHTML =
-      "⏳ Disconnected. Searching for new players...";
+      setTimeout(() => {
+        inCooldown = false;
+        lastDisconnectedFrom = null;
+      }, 15000);
 
-    setTimeout(() => {
-      inCooldown = false;
-      lastDisconnectedFrom = null;
-    }, 15000);
+      return;
+    }
 
-    return;
-  }
+    if (data.type === "connected") {
+      if (data.a !== user_id && data.b !== user_id) return;
 
-  /* 🟢 CONNECTED EVENT */
-  if (data.type === "connected") {
-    if (data.a !== user_id && data.b !== user_id) return;
+      let other = data.a === user_id ? data.b : data.a;
 
-    let other = data.a === user_id ? data.b : data.a;
+      if (inCooldown) return;
+      if (other === lastDisconnectedFrom) return;
+      if (chatInitializedFor === other) return;
 
-    // 🛑 hard ignore reconnects
-    if (inCooldown) return;
-    if (other === lastDisconnectedFrom) return;
-    if (chatInitializedFor === other) return;
+      chatInitializedFor = other;
+      connectedWith = other;
 
-    chatInitializedFor = other;
-    connectedWith = other;
+      document.getElementById("status").innerHTML =
+        "🟢 Connected with <b>" + connectedWith + "</b>";
 
-    document.getElementById("status").innerHTML =
-      "🟢 Connected with <b>" + connectedWith + "</b>";
+      document.getElementById("chat").style.display = "block";
+      document.getElementById("chatTitle").innerText =
+        "Chat with " + connectedWith;
 
-    document.getElementById("chat").style.display = "block";
-    document.getElementById("chatTitle").innerText =
-      "Chat with " + connectedWith;
+      messages.innerHTML = "";
+      loadChat();
+      return;
+    }
 
-    messages.innerHTML = "";
-    loadChat();
-    return;
-  }
+    if (data.type === "message") {
+      addMessage(data.data.from, data.data.text);
+      return;
+    }
 
-  if (data.type === "message") {
-    addMessage(data.data.from, data.data.text);
-    return;
-  }
+    if (data.type === "update") {
+      let id = data.user;
+      if (!myLat) return;
 
-  if (data.type === "update") {
-    let id = data.user;
-    if (!myLat) return;
+      if (markers[id]) map.removeLayer(markers[id]);
 
-    if (markers[id]) map.removeLayer(markers[id]);
+      let dist = distance(myLat, myLng, data.lat, data.lng);
 
-    let dist = distance(myLat, myLng, data.lat, data.lng);
+      let popup = `
+        <b>${id}</b><br>
+        ${data.interest}<br>
+        ${Math.round(dist)} m away<br>
+        ${connectedWith === id ? "<span class='connected'>Connected</span>" : "Searching"}
+      `;
 
-    let popup = `
-      <b>${id}</b><br>
-      ${data.interest}<br>
-      ${Math.round(dist)} m away<br>
-      ${connectedWith === id ? "<span class='connected'>Connected</span>" : "Searching"}
-    `;
-
-    markers[id] = L.marker([data.lat, data.lng])
-      .addTo(map)
-      .bindPopup(popup);
-  }
-};
+      markers[id] = L.marker([data.lat, data.lng])
+        .addTo(map)
+        .bindPopup(popup);
+    }
+  };
+}
 
 /* GPS */
 navigator.geolocation.watchPosition(pos => {
@@ -214,12 +291,13 @@ navigator.geolocation.watchPosition(pos => {
   } else {
     myMarker.setLatLng([myLat, myLng]);
   }
-}, () => alert("Location permission is required"));
+});
 
 /* HEARTBEAT */
 setInterval(() => {
+  if (!user_id) return;
   if (!myLat) return;
-  if (inCooldown) return; // 🔥 stop heartbeat during cooldown
+  if (inCooldown) return;
 
   fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`, {
     method:"POST"
@@ -302,6 +380,8 @@ function distance(a,b,c,d){
 </script>
 </body>
 </html>
+
+
 
 
 
