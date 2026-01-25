@@ -7,23 +7,24 @@
   <style>
     body { margin:0; font-family: system-ui, sans-serif; background:#f8fafc; }
 
-    /* 🔥 REMOVE LEAFLET DEFAULT BALLOON COMPLETELY */
+    /* 🔥 KILL ALL LEAFLET DEFAULT MARKER UI */
     .leaflet-marker-icon,
     .leaflet-div-icon {
-  background: none !important;
-  border: none !important;
-  box-shadow: none !important;
-}
+      background: none !important;
+      border: none !important;
+      box-shadow: none !important;
+      width: 0 !important;
+      height: 0 !important;
+    }
 
     .emoji-marker {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  font-size: 28px;
-  line-height: 30px;
-  text-align: center;
-  filter: drop-shadow(0 0 4px rgba(37,99,235,0.6));
-}
+      position: absolute;
+      transform: translate(-50%, -50%);
+      font-size: 28px;
+      line-height: 28px;
+      pointer-events: auto;
+      filter: drop-shadow(0 0 4px rgba(37,99,235,0.6));
+    }
 
     #join {
       position:fixed;
@@ -211,14 +212,15 @@
 
 const API = "https://radarbackend-production-d61c.up.railway.app";
 
+/* 🔥 ZERO-SIZE DIV ICONS */
 const ICONS = {
-  cricket: L.divIcon({ html:"🏏", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  chess:   L.divIcon({ html:"♟️", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  music:   L.divIcon({ html:"🎵", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  startup: L.divIcon({ html:"🚀", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  fitness: L.divIcon({ html:"💪", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  coding:  L.divIcon({ html:"💻", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] }),
-  default: L.divIcon({ html:"📍", className:"emoji-marker", iconSize:[30,30], iconAnchor:[15,15] })
+  cricket: L.divIcon({ html:"<div class='emoji-marker'>🏏</div>", className:"", iconSize:[0,0] }),
+  chess:   L.divIcon({ html:"<div class='emoji-marker'>♟️</div>", className:"", iconSize:[0,0] }),
+  music:   L.divIcon({ html:"<div class='emoji-marker'>🎵</div>", className:"", iconSize:[0,0] }),
+  startup: L.divIcon({ html:"<div class='emoji-marker'>🚀</div>", className:"", iconSize:[0,0] }),
+  fitness: L.divIcon({ html:"<div class='emoji-marker'>💪</div>", className:"", iconSize:[0,0] }),
+  coding:  L.divIcon({ html:"<div class='emoji-marker'>💻</div>", className:"", iconSize:[0,0] }),
+  default: L.divIcon({ html:"<div class='emoji-marker'>📍</div>", className:"", iconSize:[0,0] })
 };
 
 let user_id = null;
@@ -244,7 +246,7 @@ function start(){
     return;
   }
 
-  user_id = name;
+  user_id = name + "-" + Math.floor(Math.random()*1000);
   interest = int;
 
   join.style.display = "none";
@@ -309,7 +311,7 @@ function initWS(){
         <button onclick="requestMatch('${id}')">Connect</button>
       `;
 
-      markers[id] = L.marker([data.lat, data.lng], { icon })
+      markers[id] = L.marker([data.lat, data.lng], { icon, riseOnHover:true })
         .addTo(map)
         .bindPopup(popup);
     }
@@ -322,7 +324,9 @@ navigator.geolocation.watchPosition(pos => {
 
   if (!myMarker) {
     map.setView([myLat, myLng], 16);
-    myMarker = L.marker([myLat, myLng]).addTo(map).bindPopup("You");
+    myMarker = L.marker([myLat, myLng], { icon: ICONS.default })
+      .addTo(map)
+      .bindPopup("You");
   } else {
     myMarker.setLatLng([myLat, myLng]);
   }
@@ -397,6 +401,7 @@ function loadChat(){
 </script>
 </body>
 </html>
+
 
 
 
