@@ -256,7 +256,7 @@ function start(){
 }
 
 function initWS(){
-  ws = new WebSocket(`wss://radarbackend-production-d61c.up.railway.app/ws/${user_id}`);
+  ws = new WebSocket(`wss://radarbackend-production-e6f8.up.railway.app/ws/${user_id}`);
 
   ws.onmessage = e => {
     let data = JSON.parse(e.data);
@@ -401,6 +401,7 @@ function loadChat(){
 </script>
 </body>
 </html>
+
 
 
 
