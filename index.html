@@ -5,161 +5,108 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
+body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;}
 
-/* 🌈 APP BACKGROUND */
-body{
-margin:0;
-font-family:system-ui,sans-serif;
-background:linear-gradient(135deg,#2563eb 0%,#1e40af 100%);
+.leaflet-marker-icon,.leaflet-div-icon{
+background:none!important;border:none!important;box-shadow:none!important;width:0!important;height:0!important;
 }
 
-/* ===== JOIN SCREEN ===== */
+.emoji-marker{
+position:absolute;transform:translate(-50%,-50%);
+font-size:28px;line-height:28px;pointer-events:auto;
+filter:drop-shadow(0 0 4px rgba(37,99,235,0.6));
+}
+
+/* ---------- JOIN SCREEN ---------- */
 
 #join{
-position:fixed;
-inset:0;
-display:flex;
-align-items:center;
-justify-content:center;
-z-index:2000;
+position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+background:linear-gradient(135deg,#2563eb,#7c3aed);
+z-index:2000;color:white;
 }
 
 #joinBox{
-background:white;
-padding:36px;
-border-radius:20px;
-width:360px;
-box-shadow:0 30px 70px rgba(0,0,0,.3);
-animation:pop .35s ease;
-}
-
-@keyframes pop{
-from{transform:scale(.95);opacity:.5}
-to{transform:scale(1);opacity:1}
-}
-
-#joinBox h1{
-margin:0 0 6px 0;
-font-size:28px;
-color:#1e40af;
+background:white;color:black;padding:32px;border-radius:16px;width:340px;
+box-shadow:0 20px 50px rgba(0,0,0,.25);
 text-align:center;
 }
 
-#joinBox p{
-margin:0 0 20px 0;
-font-size:13px;
-color:#64748b;
-text-align:center;
+#joinBox h2{margin:0 0 10px 0;}
+
+#joinBox input,#joinBox select{
+width:100%;padding:12px;margin-bottom:14px;border-radius:10px;
+border:1px solid #ddd;font-size:15px;
 }
 
-.joinInput{
-width:100%;
-padding:12px 14px;
-margin-bottom:14px;
-border-radius:10px;
-border:1px solid #e2e8f0;
-font-size:14px;
-transition:.2s;
+#joinBox button{
+width:100%;padding:12px;
+background:linear-gradient(135deg,#2563eb,#4f46e5);
+color:white;border:none;border-radius:10px;font-size:16px;
+cursor:pointer;font-weight:600;
 }
 
-.joinInput:focus{
-outline:none;
-border-color:#2563eb;
-box-shadow:0 0 0 3px rgba(37,99,235,.15);
-}
-
-.joinBtn{
-width:100%;
-padding:12px;
-background:#2563eb;
-color:white;
-border:none;
-border-radius:10px;
-cursor:pointer;
-font-size:16px;
-font-weight:600;
-transition:.25s;
-}
-
-.joinBtn:hover{
-background:#1e40af;
-transform:translateY(-1px);
-box-shadow:0 8px 18px rgba(37,99,235,.35);
-}
-
-.joinFoot{
-margin-top:14px;
-font-size:11px;
-color:#94a3b8;
-text-align:center;
-}
-
-/* ===== MAP ===== */
+/* ---------- MAP ---------- */
 
 #map{height:100vh;width:100%;}
 
 .panel{
-position:absolute;
-top:15px;
-left:15px;
-background:white;
-padding:12px 15px;
-border-radius:10px;
-box-shadow:0 10px 30px rgba(0,0,0,.15);
-z-index:1000;
+position:absolute;top:15px;left:15px;background:white;padding:12px 15px;
+border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:1000;
 }
 
-/* ===== CHAT ===== */
+/* ---------- CHAT ---------- */
 
 #chat{
-position:absolute;
-bottom:20px;
-right:20px;
-width:320px;
-background:white;
-border-radius:14px;
-box-shadow:0 20px 50px rgba(0,0,0,.35);
-display:none;
-overflow:hidden;
-z-index:1000;
+position:absolute;bottom:20px;right:20px;width:330px;background:white;border-radius:14px;
+box-shadow:0 20px 50px rgba(0,0,0,.35);display:none;overflow:hidden;z-index:1000;
 border:1px solid #e5e7eb;
 }
 
 #chatHeader{
-background:#2563eb;
-color:white;
-padding:12px;
-font-weight:bold;
-display:flex;
-justify-content:space-between;
-align-items:center;
+background:#2563eb;color:white;padding:12px;font-weight:bold;
+display:flex;justify-content:space-between;align-items:center;
 }
 
 #messages{
-height:260px;
-overflow-y:auto;
-padding:12px;
-background:#f1f5f9;
+height:260px;overflow-y:auto;padding:12px;background:#f1f5f9;
 }
 
-#typing{
-padding:4px 12px;
-font-size:12px;
-color:#555;
-background:#f1f5f9;
-display:none;
+/* ---- typing bubble ---- */
+
+#typing{padding:6px 12px;background:#f1f5f9;display:none;}
+
+.typingBubble{
+display:inline-flex;
+gap:4px;
+padding:6px 10px;
+background:#e5e7eb;
+border-radius:12px;
+width:42px;
+justify-content:center;
 }
+
+.typingDot{
+width:6px;height:6px;background:#6b7280;border-radius:50%;
+animation:blink 1.4s infinite both;
+}
+
+.typingDot:nth-child(2){animation-delay:.2s}
+.typingDot:nth-child(3){animation-delay:.4s}
+
+@keyframes blink{
+0%,80%,100%{opacity:.2;transform:translateY(0)}
+40%{opacity:1;transform:translateY(-3px)}
+}
+
+/* ---- messages ---- */
 
 .msgRow{display:flex;margin:6px 0;}
 .msgMine{justify-content:flex-end;}
 .msgOther{justify-content:flex-start;}
 
 .bubble{
-padding:8px 12px;
-border-radius:14px;
-max-width:70%;
-font-size:14px;
-box-shadow:0 2px 6px rgba(0,0,0,.1);
+padding:8px 12px;border-radius:14px;max-width:70%;
+font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.1);
 }
 
 .mine{background:#2563eb;color:white;}
@@ -171,77 +118,36 @@ box-shadow:0 2px 6px rgba(0,0,0,.1);
 #msg{flex:1;padding:10px;border:none;font-size:14px;}
 
 #chat button{
-background:#2563eb;
-color:white;
-border:none;
-padding:10px 12px;
-cursor:pointer;
+background:#2563eb;color:white;border:none;padding:10px 12px;cursor:pointer;
 }
 
 .emojiBar{
-display:flex;
-gap:6px;
-padding:6px;
-border-top:1px solid #eee;
-background:white;
+display:flex;gap:6px;padding:6px;border-top:1px solid #eee;background:white;
 }
 
 .emojiBar button{
-background:#f1f5f9;
-border:none;
-border-radius:6px;
-padding:4px 6px;
-cursor:pointer;
+background:#f1f5f9;border:none;border-radius:6px;padding:4px 6px;cursor:pointer;
 }
 
 #disconnectBtn{
-background:#ef4444;
-color:white;
-border:none;
-padding:4px 8px;
-border-radius:6px;
-cursor:pointer;
-font-size:12px;
+background:#ef4444;color:white;border:none;padding:4px 8px;
+border-radius:6px;cursor:pointer;font-size:12px;
 }
 
-/* ===== MODAL ===== */
+/* ---------- MODAL ---------- */
 
 #modal{
-position:fixed;
-inset:0;
-display:none;
-align-items:center;
-justify-content:center;
-background:rgba(0,0,0,.3);
-z-index:3000;
+position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+background:rgba(0,0,0,.3);z-index:3000;
 }
 
 #modalBox{
-background:white;
-padding:20px;
-border-radius:10px;
-width:300px;
-text-align:center;
+background:white;padding:20px;border-radius:12px;width:300px;text-align:center;
 box-shadow:0 10px 30px rgba(0,0,0,.2);
 }
 
-/* ===== MARKERS ===== */
-
-.leaflet-marker-icon,.leaflet-div-icon{
-background:none!important;
-border:none!important;
-box-shadow:none!important;
-width:0!important;
-height:0!important;
-}
-
-.emoji-marker{
-position:absolute;
-transform:translate(-50%,-50%);
-font-size:28px;
-line-height:28px;
-pointer-events:auto;
-filter:drop-shadow(0 0 4px rgba(37,99,235,0.6));
+#modalBox button{
+margin:10px;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;
 }
 
 </style>
@@ -249,32 +155,21 @@ filter:drop-shadow(0 0 4px rgba(37,99,235,0.6));
 
 <body>
 
-<!-- JOIN SCREEN -->
-
 <div id="join">
 <div id="joinBox">
-
-<h1>Radar</h1>
-<p>Discover people nearby with shared interests</p>
-
-<input id="nameInput" class="joinInput" placeholder="Your name">
-
-<select id="interestInput" class="joinInput">
-<option value="">Select your interest</option>
-<option value="chess">♟ Chess</option>
-<option value="cricket">🏏 Cricket</option>
-<option value="music">🎵 Music</option>
-<option value="startup">🚀 Startup</option>
-<option value="fitness">💪 Fitness</option>
-<option value="coding">💻 Coding</option>
+<h2>🚀 Join Radar</h2>
+<p style="margin-top:0;color:#666">Discover people nearby with shared interests</p>
+<input id="nameInput" placeholder="Your name">
+<select id="interestInput">
+<option value="">Select interest</option>
+<option value="chess">Chess</option>
+<option value="cricket">Cricket</option>
+<option value="music">Music</option>
+<option value="startup">Startup</option>
+<option value="fitness">Fitness</option>
+<option value="coding">Coding</option>
 </select>
-
-<button class="joinBtn" onclick="start()">Start Exploring</button>
-
-<div class="joinFoot">
-Your location is used only to find nearby matches
-</div>
-
+<button onclick="start()">Enter Radar</button>
 </div>
 </div>
 
@@ -292,7 +187,14 @@ Your location is used only to find nearby matches
 </div>
 
 <div id="messages"></div>
-<div id="typing">Typing...</div>
+
+<div id="typing">
+<div class="typingBubble">
+<div class="typingDot"></div>
+<div class="typingDot"></div>
+<div class="typingDot"></div>
+</div>
+</div>
 
 <div class="emojiBar">
 <button onclick="addEmoji('😀')">😀</button>
@@ -316,12 +218,11 @@ Your location is used only to find nearby matches
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
 <script>
 
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
-/* SOUND */
+/* sound unlock */
 const msgSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 let soundUnlocked=false;
 document.addEventListener("click",()=>{
@@ -332,7 +233,7 @@ msgSound.pause();msgSound.currentTime=0;msgSound.volume=1;soundUnlocked=true;
 });
 },{once:true});
 
-/* ICONS */
+/* icons */
 const ICONS={
 cricket:L.divIcon({html:"<div class='emoji-marker'>🏏</div>",className:"",iconSize:[0,0]}),
 chess:L.divIcon({html:"<div class='emoji-marker'>♟️</div>",className:"",iconSize:[0,0]}),
@@ -386,19 +287,9 @@ return;
 
 if(data.type==="typing"){
 if(data.from===connectedWith){
-typing.innerText=data.from+" is typing...";
 typing.style.display="block";
 clearTimeout(typingTimer);
 typingTimer=setTimeout(()=>typing.style.display="none",1500);
-}
-return;
-}
-
-if(data.type==="disconnected"){
-if(data.with===connectedWith){
-chat.style.display="none";
-connectedWith=null;
-messages.innerHTML="";
 }
 return;
 }
@@ -412,17 +303,14 @@ if(data.type==="update"){
 let id=data.user;
 if(!myLat||id===user_id)return;
 if(markers[id])map.removeLayer(markers[id]);
-
 const icon=ICONS[data.interest]||ICONS.default;
 
 let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
 marker.bindPopup(`<b>${id}</b><br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
-
 marker.on("popupopen",()=>{
 const btn=document.getElementById(`connect_${id}`);
 if(btn) btn.onclick=()=>requestMatch(id);
 });
-
 markers[id]=marker;
 }
 };
@@ -485,16 +373,12 @@ if(from!==user_id && soundUnlocked){
 msgSound.currentTime=0;
 msgSound.play().catch(()=>{});
 }
-
 let row=document.createElement("div");
 row.className="msgRow "+(from===user_id?"msgMine":"msgOther");
-
 let bubble=document.createElement("div");
 bubble.className="bubble "+(from===user_id?"mine":"other");
-
 let time=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 bubble.innerHTML=`<div>${text}</div><div class="time">${time}</div>`;
-
 row.appendChild(bubble);
 messages.appendChild(row);
 messages.scrollTop=messages.scrollHeight;
