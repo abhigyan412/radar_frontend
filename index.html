@@ -3,7 +3,6 @@
 <head>
 <title>Radar Live</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
 <style>
 body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;}
 .leaflet-marker-icon,.leaflet-div-icon{background:none!important;border:none!important;box-shadow:none!important;width:0!important;height:0!important;}
@@ -97,17 +96,14 @@ body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;}
 
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
-/* SOUND */
+/* SOUND UNLOCK */
 const msgSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 let soundUnlocked=false;
 document.addEventListener("click",()=>{
-if(soundUnlocked) return;
+if(soundUnlocked)return;
 msgSound.volume=0;
 msgSound.play().then(()=>{
-msgSound.pause();
-msgSound.currentTime=0;
-msgSound.volume=1;
-soundUnlocked=true;
+msgSound.pause();msgSound.currentTime=0;msgSound.volume=1;soundUnlocked=true;
 });
 },{once:true});
 
@@ -122,7 +118,7 @@ coding:L.divIcon({html:"<div class='emoji-marker'>💻</div>",className:"",iconS
 default:L.divIcon({html:"<div class='emoji-marker'>📍</div>",className:"",iconSize:[0,0]})
 };
 
-let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,ws=null,typingTimer=null;
+let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,incomingFrom=null,ws=null,typingTimer=null;
 
 let map=L.map("map").setView([0,0],2);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -146,13 +142,10 @@ ws=new WebSocket(`wss://radarbackend-production-e6f8.up.railway.app/ws/${user_id
 ws.onmessage=e=>{
 let data=JSON.parse(e.data);
 
-if(data.type==="typing"){
-if(data.from===connectedWith){
-typing.innerText=data.from+" is typing...";
-typing.style.display="block";
-clearTimeout(typingTimer);
-typingTimer=setTimeout(()=>typing.style.display="none",1500);
-}
+if(data.type==="match_request"){
+incomingFrom=data.from;
+modalText.innerText=`${incomingFrom} wants to connect`;
+modal.style.display="flex";
 return;
 }
 
@@ -163,6 +156,16 @@ chat.style.display="block";
 chatTitle.innerText=`Chat with ${other} • ${interest}`;
 messages.innerHTML="";
 loadChat();
+return;
+}
+
+if(data.type==="typing"){
+if(data.from===connectedWith){
+typing.innerText=data.from+" is typing...";
+typing.style.display="block";
+clearTimeout(typingTimer);
+typingTimer=setTimeout(()=>typing.style.display="none",1500);
+}
 return;
 }
 
@@ -185,9 +188,14 @@ let id=data.user;
 if(!myLat||id===user_id)return;
 if(markers[id])map.removeLayer(markers[id]);
 const icon=ICONS[data.interest]||ICONS.default;
-markers[id]=L.marker([data.lat,data.lng],{icon}).addTo(map)
-.bindPopup(`<b>${id}</b><br>${data.interest}<br>
-<button onclick="requestMatch('${id}')">Connect</button>`);
+
+let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
+marker.bindPopup(`<b>${id}</b><br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
+marker.on("popupopen",()=>{
+const btn=document.getElementById(`connect_${id}`);
+if(btn) btn.onclick=()=>requestMatch(id);
+});
+markers[id]=marker;
 }
 };
 }
@@ -206,9 +214,20 @@ if(!user_id||!myLat)return;
 fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`,{method:"POST"});
 },8000);
 
-/* RESTORED */
 function requestMatch(other){
 fetch(`${API}/request_match?from_user=${user_id}&to_user=${other}`,{method:"POST"});
+}
+
+function accept(){
+if(!incomingFrom)return;
+fetch(`${API}/accept_match?user_id=${user_id}&from_user=${incomingFrom}`,{method:"POST"});
+modal.style.display="none";
+incomingFrom=null;
+}
+
+function reject(){
+modal.style.display="none";
+incomingFrom=null;
 }
 
 function disconnect(){
@@ -264,8 +283,4 @@ addMessage(j.from,j.text);
 </script>
 </body>
 </html>
-
-
-
-
 
