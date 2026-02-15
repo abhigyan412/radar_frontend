@@ -97,11 +97,10 @@ body{margin:0;font-family:system-ui,sans-serif;background:#f8fafc;}
 
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
-/* 🔊 SOUND WITH UNLOCK */
+/* SOUND */
 const msgSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 let soundUnlocked=false;
-
-function unlockSound(){
+document.addEventListener("click",()=>{
 if(soundUnlocked) return;
 msgSound.volume=0;
 msgSound.play().then(()=>{
@@ -109,12 +108,10 @@ msgSound.pause();
 msgSound.currentTime=0;
 msgSound.volume=1;
 soundUnlocked=true;
-console.log("🔊 sound unlocked");
-}).catch(()=>{});
-}
+});
+},{once:true});
 
-document.addEventListener("click",unlockSound,{once:true});
-
+/* ICONS */
 const ICONS={
 cricket:L.divIcon({html:"<div class='emoji-marker'>🏏</div>",className:"",iconSize:[0,0]}),
 chess:L.divIcon({html:"<div class='emoji-marker'>♟️</div>",className:"",iconSize:[0,0]}),
@@ -125,8 +122,7 @@ coding:L.divIcon({html:"<div class='emoji-marker'>💻</div>",className:"",iconS
 default:L.divIcon({html:"<div class='emoji-marker'>📍</div>",className:"",iconSize:[0,0]})
 };
 
-let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,incomingFrom=null,ws=null;
-let typingTimer=null;
+let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,ws=null,typingTimer=null;
 
 let map=L.map("map").setView([0,0],2);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(map);
@@ -164,9 +160,18 @@ if(data.type==="connected"){
 let other=data.a===user_id?data.b:data.a;
 connectedWith=other;
 chat.style.display="block";
-chatTitle.innerText = `Chat with ${other} • ${interest}`;
+chatTitle.innerText=`Chat with ${other} • ${interest}`;
 messages.innerHTML="";
 loadChat();
+return;
+}
+
+if(data.type==="disconnected"){
+if(data.with===connectedWith){
+chat.style.display="none";
+connectedWith=null;
+messages.innerHTML="";
+}
 return;
 }
 
@@ -201,6 +206,18 @@ if(!user_id||!myLat)return;
 fetch(`${API}/heartbeat?user_id=${user_id}&lat=${myLat}&lng=${myLng}&interest=${interest}`,{method:"POST"});
 },8000);
 
+/* RESTORED */
+function requestMatch(other){
+fetch(`${API}/request_match?from_user=${user_id}&to_user=${other}`,{method:"POST"});
+}
+
+function disconnect(){
+fetch(`${API}/disconnect?user_id=${user_id}`,{method:"POST"});
+chat.style.display="none";
+messages.innerHTML="";
+connectedWith=null;
+}
+
 function sendMsg(){
 let t=msg.value.trim();
 if(!t||!connectedWith)return;
@@ -213,25 +230,20 @@ msg.addEventListener("keypress",e=>{if(e.key==="Enter")sendMsg();});
 
 msg.addEventListener("input",()=>{
 if(!connectedWith)return;
-fetch(`${API}/typing?from_user=${user_id}&to_user=${connectedWith}`,{method:"POST"}).catch(()=>{});
+fetch(`${API}/typing?from_user=${user_id}&to_user=${connectedWith}`,{method:"POST"});
 });
 
 function addMessage(from,text){
-
 if(from!==user_id && soundUnlocked){
 msgSound.currentTime=0;
 msgSound.play().catch(()=>{});
 }
-
 let row=document.createElement("div");
 row.className="msgRow "+(from===user_id?"msgMine":"msgOther");
-
 let bubble=document.createElement("div");
 bubble.className="bubble "+(from===user_id?"mine":"other");
-
 let time=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
 bubble.innerHTML=`<div>${text}</div><div class="time">${time}</div>`;
-
 row.appendChild(bubble);
 messages.appendChild(row);
 messages.scrollTop=messages.scrollHeight;
@@ -252,6 +264,7 @@ addMessage(j.from,j.text);
 </script>
 </body>
 </html>
+
 
 
 
