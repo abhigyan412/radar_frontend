@@ -17,7 +17,7 @@ font-size:28px;line-height:28px;pointer-events:auto;
 filter:drop-shadow(0 0 4px rgba(37,99,235,0.6));
 }
 
-/* ---------- JOIN SCREEN COMMUNITY VIBE ---------- */
+/* JOIN SCREEN */
 
 #join{
 position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
@@ -25,7 +25,6 @@ background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b);
 z-index:2000;color:white;overflow:hidden;
 }
 
-/* glowing blobs */
 #join:before,#join:after{
 content:"";position:absolute;width:420px;height:420px;border-radius:50%;
 filter:blur(90px);opacity:.35;
@@ -39,10 +38,7 @@ box-shadow:0 30px 70px rgba(0,0,0,.28);text-align:center;
 animation:pop .35s ease;
 }
 
-@keyframes pop{
-from{transform:scale(.96);opacity:0}
-to{transform:scale(1);opacity:1}
-}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
 
 .badge{
 display:inline-block;background:#f3e8ff;color:#7c3aed;
@@ -55,10 +51,7 @@ background:linear-gradient(135deg,#7c3aed,#ec4899);
 -webkit-background-clip:text;-webkit-text-fill-color:transparent;
 }
 
-.tagline{
-color:#555;font-size:15px;margin-bottom:18px;line-height:1.4;
-}
-
+.tagline{color:#555;font-size:15px;margin-bottom:18px;line-height:1.4;}
 .micro{font-size:12px;color:#888;margin-top:8px;}
 
 #joinBox input,#joinBox select{
@@ -74,7 +67,7 @@ cursor:pointer;font-weight:600;
 box-shadow:0 8px 24px rgba(0,0,0,.25);
 }
 
-/* ---------- MAP ---------- */
+/* MAP */
 
 #map{height:100vh;width:100%;}
 
@@ -83,7 +76,7 @@ position:absolute;top:15px;left:15px;background:white;padding:12px 15px;
 border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.15);z-index:1000;
 }
 
-/* ---------- CHAT ---------- */
+/* CHAT */
 
 #chat{
 position:absolute;bottom:20px;right:20px;width:330px;background:white;border-radius:14px;
@@ -100,9 +93,7 @@ display:flex;justify-content:space-between;align-items:center;
 
 #typing{padding:6px 12px;background:#f1f5f9;display:none;}
 
-.typingBubble{
-display:inline-flex;gap:4px;padding:6px 10px;background:#e5e7eb;border-radius:12px;width:42px;justify-content:center;
-}
+.typingBubble{display:inline-flex;gap:4px;padding:6px 10px;background:#e5e7eb;border-radius:12px;width:42px;justify-content:center;}
 
 .typingDot{
 width:6px;height:6px;background:#6b7280;border-radius:50%;
@@ -111,10 +102,7 @@ animation:blink 1.4s infinite both;
 .typingDot:nth-child(2){animation-delay:.2s}
 .typingDot:nth-child(3){animation-delay:.4s}
 
-@keyframes blink{
-0%,80%,100%{opacity:.2;transform:translateY(0)}
-40%{opacity:1;transform:translateY(-3px)}
-}
+@keyframes blink{0%,80%,100%{opacity:.2;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
 
 .msgRow{display:flex;margin:6px 0;}
 .msgMine{justify-content:flex-end;}
@@ -140,10 +128,34 @@ font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.1);
 
 #disconnectBtn{background:#ef4444;color:white;border:none;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;}
 
+/* MODAL */
+
 #modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);z-index:3000;}
 #modalBox{background:white;padding:20px;border-radius:12px;width:300px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2);}
 #modalBox button{margin:10px;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;}
 
+/* TOAST */
+
+#toast{
+position:fixed;
+bottom:30px;
+left:50%;
+transform:translateX(-50%) translateY(20px);
+background:#111827;
+color:white;
+padding:12px 18px;
+border-radius:12px;
+box-shadow:0 10px 30px rgba(0,0,0,.35);
+opacity:0;
+pointer-events:none;
+transition:.35s ease;
+z-index:5000;
+font-size:14px;
+}
+#toast.show{
+opacity:1;
+transform:translateX(-50%) translateY(0);
+}
 </style>
 </head>
 
@@ -173,10 +185,11 @@ Meet people around you with shared interests — instantly.
 </select>
 
 <button onclick="start()">Start discovering</button>
-
 <div class="micro">Location is used only to show nearby people.</div>
 </div>
 </div>
+
+<div id="toast"></div>
 
 <div class="panel">
 <b id="me"></b><br>
@@ -227,6 +240,14 @@ Meet people around you with shared interests — instantly.
 <script>
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
+/* TOAST */
+const toastBox=document.getElementById("toast");
+function toast(msg){
+toastBox.innerText=msg;
+toastBox.classList.add("show");
+setTimeout(()=>toastBox.classList.remove("show"),2500);
+}
+
 /* SOUND */
 const msgSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 let soundUnlocked=false;
@@ -259,7 +280,7 @@ let myMarker=null,markers={};
 function start(){
 const name=nameInput.value.trim();
 const int=interestInput.value;
-if(!name||!int){alert("Enter name and select interest");return;}
+if(!name||!int){toast("Enter name and interest");return;}
 user_id=name+"-"+Math.floor(Math.random()*1000);
 interest=int;
 join.style.display="none";
@@ -286,6 +307,7 @@ connectedWith=other;
 chat.style.display="block";
 chatTitle.innerText=`Chat with ${other} • ${interest}`;
 messages.innerHTML="";
+toast("Connected!");
 loadChat();
 return;
 }
@@ -300,14 +322,14 @@ return;
 }
 
 if(data.type==="disconnected"){
-    if(data.with===connectedWith){
-        alert("Partner disconnected");
-        chat.style.display="none";
-        messages.innerHTML="";
-        connectedWith=null;
-    }
-    return;
-}  
+if(data.with===connectedWith){
+toast("Partner disconnected");
+chat.style.display="none";
+messages.innerHTML="";
+connectedWith=null;
+}
+return;
+}
 
 if(data.type==="message"){
 addMessage(data.data.from,data.data.text);
@@ -366,6 +388,7 @@ fetch(`${API}/disconnect?user_id=${user_id}`,{method:"POST"});
 chat.style.display="none";
 messages.innerHTML="";
 connectedWith=null;
+toast("Disconnected");
 }
 
 function sendMsg(){
@@ -410,7 +433,6 @@ addMessage(j.from,j.text);
 });
 });
 }
-
 </script>
 
 </body>
