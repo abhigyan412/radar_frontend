@@ -362,7 +362,7 @@ if(markers[id])map.removeLayer(markers[id]);
 const icon=ICONS[data.interest]||ICONS.default;
 
 let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
-marker.bindPopup(`<b>${id}</b><br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
+marker.bindPopup(`<b>${id.split("-")[0]}</b><br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
 marker.on("popupopen",()=>{
 const btn=document.getElementById(`connect_${id}`);
 if(btn) btn.onclick=()=>requestMatch(id);
@@ -457,6 +457,7 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
 
 
 
