@@ -299,6 +299,15 @@ typingTimer=setTimeout(()=>typing.style.display="none",1500);
 return;
 }
 
+if(data.type==="disconnected"){
+    if(data.with===connectedWith){
+        chat.style.display="none";
+        messages.innerHTML="";
+        connectedWith=null;
+    }
+    return;
+}  
+
 if(data.type==="message"){
 addMessage(data.data.from,data.data.text);
 return;
@@ -405,3 +414,4 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
