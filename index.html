@@ -305,7 +305,7 @@ if(data.type==="connected"){
 let other=data.a===user_id?data.b:data.a;
 connectedWith=other;
 chat.style.display="block";
-chatTitle.innerText=`Chat with ${other} • ${interest}`;
+chatTitle.innerText=`Chat with ${other.split("-")[0]} • ${interest}`;
 messages.innerHTML="";
 toast("Connected!");
 loadChat();
@@ -437,5 +437,6 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
 
 
