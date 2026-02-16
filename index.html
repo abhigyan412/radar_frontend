@@ -301,6 +301,7 @@ return;
 
 if(data.type==="disconnected"){
     if(data.with===connectedWith){
+        alert("Partner disconnected");
         chat.style.display="none";
         messages.innerHTML="";
         connectedWith=null;
@@ -414,4 +415,5 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
 
