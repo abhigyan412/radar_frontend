@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Radar Live</title>
+<title>Comunify</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
@@ -17,32 +17,43 @@ font-size:28px;line-height:28px;pointer-events:auto;
 filter:drop-shadow(0 0 4px rgba(37,99,235,0.6));
 }
 
-/* ---------- JOIN SCREEN ---------- */
+/* ---------- JOIN SCREEN COMMUNITY VIBE ---------- */
 
 #join{
 position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-background:linear-gradient(135deg,#2563eb,#7c3aed);
-z-index:2000;color:white;
+background:linear-gradient(135deg,#7c3aed,#ec4899,#f59e0b);
+z-index:2000;color:white;overflow:hidden;
 }
 
+/* glowing blobs */
+#join:before,#join:after{
+content:"";position:absolute;width:420px;height:420px;border-radius:50%;
+filter:blur(90px);opacity:.35;
+}
+#join:before{background:#fde68a;top:-120px;left:-120px;}
+#join:after{background:#c4b5fd;bottom:-120px;right:-120px;}
+
 #joinBox{
-background:white;color:black;padding:34px;border-radius:18px;width:360px;
-box-shadow:0 30px 70px rgba(0,0,0,.28);
-text-align:center;
+position:relative;background:white;color:black;padding:36px;border-radius:20px;width:360px;
+box-shadow:0 30px 70px rgba(0,0,0,.28);text-align:center;
+animation:pop .35s ease;
+}
+
+@keyframes pop{
+from{transform:scale(.96);opacity:0}
+to{transform:scale(1);opacity:1}
 }
 
 .badge{
-display:inline-block;
-background:#eef2ff;
-color:#4f46e5;
-font-size:12px;
-padding:4px 10px;
-border-radius:20px;
-margin-bottom:12px;
-font-weight:600;
+display:inline-block;background:#f3e8ff;color:#7c3aed;
+font-size:12px;padding:4px 10px;border-radius:20px;margin-bottom:12px;font-weight:600;
 }
 
-#joinBox h1{margin:6px 0;font-size:28px;}
+#joinBox h1{
+margin:6px 0;font-size:30px;
+background:linear-gradient(135deg,#7c3aed,#ec4899);
+-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
 
 .tagline{
 color:#555;font-size:15px;margin-bottom:18px;line-height:1.4;
@@ -51,16 +62,16 @@ color:#555;font-size:15px;margin-bottom:18px;line-height:1.4;
 .micro{font-size:12px;color:#888;margin-top:8px;}
 
 #joinBox input,#joinBox select{
-width:100%;padding:13px;margin-bottom:14px;border-radius:10px;
+width:100%;padding:13px;margin-bottom:14px;border-radius:12px;
 border:1px solid #ddd;font-size:15px;
 }
 
 #joinBox button{
 width:100%;padding:14px;
-background:linear-gradient(135deg,#2563eb,#4f46e5);
-color:white;border:none;border-radius:12px;font-size:16px;
+background:linear-gradient(135deg,#7c3aed,#ec4899);
+color:white;border:none;border-radius:14px;font-size:16px;
 cursor:pointer;font-weight:600;
-box-shadow:0 6px 20px rgba(37,99,235,.35);
+box-shadow:0 8px 24px rgba(0,0,0,.25);
 }
 
 /* ---------- MAP ---------- */
@@ -85,11 +96,7 @@ background:#2563eb;color:white;padding:12px;font-weight:bold;
 display:flex;justify-content:space-between;align-items:center;
 }
 
-#messages{
-height:260px;overflow-y:auto;padding:12px;background:#f1f5f9;
-}
-
-/* typing dots */
+#messages{height:260px;overflow-y:auto;padding:12px;background:#f1f5f9;}
 
 #typing{padding:6px 12px;background:#f1f5f9;display:none;}
 
@@ -133,8 +140,6 @@ font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.1);
 
 #disconnectBtn{background:#ef4444;color:white;border:none;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;}
 
-/* modal */
-
 #modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.3);z-index:3000;}
 #modalBox{background:white;padding:20px;border-radius:12px;width:300px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.2);}
 #modalBox button{margin:10px;padding:8px 14px;border:none;border-radius:8px;cursor:pointer;}
@@ -144,18 +149,15 @@ font-size:14px;box-shadow:0 2px 6px rgba(0,0,0,.1);
 
 <body>
 
-<!-- JOIN SCREEN -->
-
 <div id="join">
 <div id="joinBox">
-
 <div class="badge">LIVE • people nearby now</div>
 
-<h1>Radar</h1>
+<h1>Comunify</h1>
 
 <div class="tagline">
-Meet people around you who share your interests.<br>
-Real-time. Local. Instant connection.
+Turn proximity into community.<br>
+Meet people around you with shared interests — instantly.
 </div>
 
 <input id="nameInput" placeholder="Enter your name">
@@ -173,7 +175,6 @@ Real-time. Local. Instant connection.
 <button onclick="start()">Start discovering</button>
 
 <div class="micro">Location is used only to show nearby people.</div>
-
 </div>
 </div>
 
@@ -222,11 +223,11 @@ Real-time. Local. Instant connection.
 </div>
 
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-<script>
 
+<script>
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
-/* sound unlock */
+/* SOUND */
 const msgSound=new Audio("https://actions.google.com/sounds/v1/cartoon/wood_plank_flicks.ogg");
 let soundUnlocked=false;
 document.addEventListener("click",()=>{
@@ -237,15 +238,15 @@ msgSound.pause();msgSound.currentTime=0;msgSound.volume=1;soundUnlocked=true;
 });
 },{once:true});
 
-/* icons */
+/* ICONS */
 const ICONS={
-cricket:L.divIcon({html:"<div class='emoji-marker'>🏏</div>",className:"",iconSize:[0,0]}),
-chess:L.divIcon({html:"<div class='emoji-marker'>♟️</div>",className:"",iconSize:[0,0]}),
-music:L.divIcon({html:"<div class='emoji-marker'>🎵</div>",className:"",iconSize:[0,0]}),
-startup:L.divIcon({html:"<div class='emoji-marker'>🚀</div>",className:"",iconSize:[0,0]}),
-fitness:L.divIcon({html:"<div class='emoji-marker'>💪</div>",className:"",iconSize:[0,0]}),
-coding:L.divIcon({html:"<div class='emoji-marker'>💻</div>",className:"",iconSize:[0,0]}),
-default:L.divIcon({html:"<div class='emoji-marker'>📍</div>",className:"",iconSize:[0,0]})
+cricket:L.divIcon({html:"<div class='emoji-marker'>🏏</div>",iconSize:[0,0]}),
+chess:L.divIcon({html:"<div class='emoji-marker'>♟️</div>",iconSize:[0,0]}),
+music:L.divIcon({html:"<div class='emoji-marker'>🎵</div>",iconSize:[0,0]}),
+startup:L.divIcon({html:"<div class='emoji-marker'>🚀</div>",iconSize:[0,0]}),
+fitness:L.divIcon({html:"<div class='emoji-marker'>💪</div>",iconSize:[0,0]}),
+coding:L.divIcon({html:"<div class='emoji-marker'>💻</div>",iconSize:[0,0]}),
+default:L.divIcon({html:"<div class='emoji-marker'>📍</div>",iconSize:[0,0]})
 };
 
 let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,incomingFrom=null,ws=null,typingTimer=null;
@@ -401,6 +402,6 @@ addMessage(j.from,j.text);
 }
 
 </script>
-</body>
-</html>                       update according to this and give full 
 
+</body>
+</html>
