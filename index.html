@@ -312,6 +312,17 @@ loadChat();
 return;
 }
 
+if(data.type==="partner_left"){
+    if(data.user===connectedWith){
+        toast("Partner left");
+        chat.style.display="none";
+        messages.innerHTML="";
+        connectedWith=null;
+    }
+    return;
+}  
+  
+
 if(data.type==="typing"){
 if(data.from===connectedWith){
 typing.style.display="block";
@@ -331,6 +342,14 @@ connectedWith=null;
 return;
 }
 
+if(data.type==="remove"){
+let id=data.user;
+if(markers[id]){
+map.removeLayer(markers[id]);
+delete markers[id];
+}
+return;
+}  
 if(data.type==="message"){
 addMessage(data.data.from,data.data.text);
 return;
@@ -352,6 +371,7 @@ markers[id]=marker;
 }
 };
 }
+  
 
 navigator.geolocation.watchPosition(pos=>{
 myLat=pos.coords.latitude;
@@ -437,6 +457,7 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
 
 
 
