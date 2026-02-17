@@ -302,7 +302,7 @@ let data=JSON.parse(e.data);
 
 if(data.type==="match_request"){
 incomingFrom=data.from;
-modalText.innerText=`${incomingFrom} wants to connect`;
+modalText.innerText=`${incomingFrom.split("-")[0]} wants to connect`;
 modal.style.display="flex";
 return;
 }
@@ -463,6 +463,7 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
+
 
 
 
