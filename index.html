@@ -36,6 +36,7 @@ filter:blur(90px);opacity:.35;
 position:relative;background:white;color:black;padding:36px;border-radius:20px;width:360px;
 box-shadow:0 30px 70px rgba(0,0,0,.28);text-align:center;
 animation:pop .35s ease;
+max-height:90vh;overflow-y:auto;
 }
 
 @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:scale(1);opacity:1}}
@@ -54,11 +55,16 @@ background:linear-gradient(135deg,#7c3aed,#ec4899);
 .tagline{color:#555;font-size:15px;margin-bottom:18px;line-height:1.4;}
 .micro{font-size:12px;color:#888;margin-top:8px;}
 
+.section-label{
+text-align:left;font-size:12px;font-weight:600;color:#7c3aed;
+margin-bottom:4px;margin-top:6px;text-transform:uppercase;letter-spacing:.5px;
+}
+
 #joinBox input,
 #joinBox select{
 width:100%;
 padding:13px 14px;
-margin-bottom:14px;
+margin-bottom:10px;
 border-radius:12px;
 border:1px solid #ddd;
 font-size:15px;
@@ -76,6 +82,7 @@ background:linear-gradient(135deg,#7c3aed,#ec4899);
 color:white;border:none;border-radius:14px;font-size:16px;
 cursor:pointer;font-weight:600;
 box-shadow:0 8px 24px rgba(0,0,0,.25);
+margin-top:6px;
 }
 
 /* MAP */
@@ -180,29 +187,50 @@ transform:translateX(-50%) translateY(0);
 
 <div id="join">
 <div id="joinBox">
-<div class="badge">LIVE • people nearby now</div>
+  <div class="badge">LIVE • people nearby now</div>
 
-<h1>Comm(u)nify</h1>
+  <h1>Comm(u)nify</h1>
 
-<div class="tagline">
-Turn proximity into community.<br>
-Meet people around you with shared interests — instantly.
-</div>
+  <div class="tagline">
+    Turn proximity into community.<br>
+    Meet people around you with shared interests — instantly.
+  </div>
 
-<input id="nameInput" placeholder="Enter your name">
+  <input id="nameInput" placeholder="Enter your name">
 
-<select id="interestInput">
-<option value="">Choose your interest</option>
-<option value="chess">♟️ Chess</option>
-<option value="cricket">🏏 Cricket</option>
-<option value="music">🎵 Music</option>
-<option value="startup">🚀 Startup</option>
-<option value="fitness">💪 Fitness</option>
-<option value="coding">💻 Coding</option>
-</select>
+  <div class="section-label">⚽ Sports & Games</div>
+  <select id="interestInput">
+    <option value="">Choose your interest</option>
+    <optgroup label="Interests">
+      <option value="cricket">🏏 Cricket</option>
+      <option value="chess">♟️ Chess</option>
+      <option value="fitness">💪 Fitness</option>
+      <option value="gaming">🎮 Gaming</option>
+      <option value="yoga">🧘 Yoga & Wellness</option>
+    </optgroup>
+    <optgroup label="🎨 Arts & Culture">
+      <option value="music">🎵 Music</option>
+      <option value="art">🎨 Art & Design</option>
+      <option value="photography">📸 Photography</option>
+      <option value="movies">🎬 Movies & TV</option>
+      <option value="books">📚 Books & Reading</option>
+    </optgroup>
+    <optgroup label="💡 Tech & Career">
+      <option value="coding">💻 Coding</option>
+      <option value="startup">🚀 Startup</option>
+      <option value="ai">🤖 AI & Machine Learning</option>
+      <option value="design">🖥️ UI/UX Design</option>
+    </optgroup>
+    <optgroup label="🌍 Lifestyle">
+      <option value="travel">🌍 Travel</option>
+      <option value="food">🍕 Food & Cooking</option>
+      <option value="pets">🐾 Pets & Animals</option>
+      <option value="nature">🌿 Nature & Outdoors</option>
+    </optgroup>
+  </select>
 
-<button onclick="start()">Start discovering</button>
-<div class="micro">Location is used only to show nearby people.</div>
+  <button onclick="start()">Start discovering</button>
+  <div class="micro">Location is used only to show nearby people.</div>
 </div>
 </div>
 
@@ -257,6 +285,14 @@ Meet people around you with shared interests — instantly.
 <script>
 const API="https://radarbackend-production-e6f8.up.railway.app";
 
+/* INTEREST → EMOJI MAP */
+const INTEREST_EMOJI={
+  cricket:"🏏",chess:"♟️",fitness:"💪",gaming:"🎮",yoga:"🧘",
+  music:"🎵",art:"🎨",photography:"📸",movies:"🎬",books:"📚",
+  coding:"💻",startup:"🚀",ai:"🤖",design:"🖥️",
+  travel:"🌍",food:"🍕",pets:"🐾",nature:"🌿"
+};
+
 /* TOAST */
 const toastBox=document.getElementById("toast");
 function toast(msg){
@@ -276,16 +312,12 @@ msgSound.pause();msgSound.currentTime=0;msgSound.volume=1;soundUnlocked=true;
 });
 },{once:true});
 
-/* ICONS */
-const ICONS={
-cricket:L.divIcon({html:"<div class='emoji-marker'>🏏</div>",iconSize:[0,0]}),
-chess:L.divIcon({html:"<div class='emoji-marker'>♟️</div>",iconSize:[0,0]}),
-music:L.divIcon({html:"<div class='emoji-marker'>🎵</div>",iconSize:[0,0]}),
-startup:L.divIcon({html:"<div class='emoji-marker'>🚀</div>",iconSize:[0,0]}),
-fitness:L.divIcon({html:"<div class='emoji-marker'>💪</div>",iconSize:[0,0]}),
-coding:L.divIcon({html:"<div class='emoji-marker'>💻</div>",iconSize:[0,0]}),
-default:L.divIcon({html:"<div class='emoji-marker'>📍</div>",iconSize:[0,0]})
-};
+/* ICONS — dynamically built from emoji map */
+const ICONS={};
+Object.entries(INTEREST_EMOJI).forEach(([key,emoji])=>{
+  ICONS[key]=L.divIcon({html:`<div class='emoji-marker'>${emoji}</div>`,iconSize:[0,0]});
+});
+ICONS.default=L.divIcon({html:"<div class='emoji-marker'>📍</div>",iconSize:[0,0]});
 
 let user_id=null,interest=null,myLat=null,myLng=null,connectedWith=null,incomingFrom=null,ws=null,typingTimer=null;
 
@@ -301,7 +333,8 @@ if(!name||!int){toast("Enter name and interest");return;}
 user_id=name+"-"+Math.floor(Math.random()*1000);
 interest=int;
 join.style.display="none";
-me.innerText=`${name} — ${interest}`;
+const emoji=INTEREST_EMOJI[int]||"📍";
+me.innerText=`${name} ${emoji} — ${int}`;
 initWS();
 }
 
@@ -337,8 +370,7 @@ if(data.type==="partner_left"){
         connectedWith=null;
     }
     return;
-}  
-  
+}
 
 if(data.type==="typing"){
 if(data.from===connectedWith){
@@ -366,7 +398,7 @@ map.removeLayer(markers[id]);
 delete markers[id];
 }
 return;
-}  
+}
 if(data.type==="message"){
 addMessage(data.data.from,data.data.text);
 return;
@@ -377,9 +409,10 @@ let id=data.user;
 if(!myLat||id===user_id)return;
 if(markers[id])map.removeLayer(markers[id]);
 const icon=ICONS[data.interest]||ICONS.default;
+const emoji=INTEREST_EMOJI[data.interest]||"📍";
 
 let marker=L.marker([data.lat,data.lng],{icon}).addTo(map);
-marker.bindPopup(`<b>${id.split("-")[0]}</b><br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
+marker.bindPopup(`<b>${id.split("-")[0]}</b> ${emoji}<br>${data.interest}<br><button id="connect_${id}">Connect</button>`);
 marker.on("popupopen",()=>{
 const btn=document.getElementById(`connect_${id}`);
 if(btn) btn.onclick=()=>requestMatch(id);
@@ -388,7 +421,6 @@ markers[id]=marker;
 }
 };
 }
-  
 
 navigator.geolocation.watchPosition(pos=>{
 myLat=pos.coords.latitude;
@@ -474,7 +506,6 @@ addMessage(j.from,j.text);
 
 </body>
 </html>
-
 
 
 
